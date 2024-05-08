@@ -4,34 +4,54 @@ import plotly.graph_objects as go
 import streamlit as st
 import google.generativeai as genai
 
-# APIキーの設定
 api_key = st.secrets["gemini_api_key"]
 genai.configure(api_key=api_key)
 
-# モデルの設定
 model = genai.GenerativeModel('gemini-pro')
 
-# タイトル
-st.title('自己PRジェネレータ')
+st.set_page_config(page_title='ES添削ツール', layout='wide')
+col1, col2 = st.columns([1, 20])
+with col1: st.image('', width=100)
 
-# ユーザー入力
-industry_or_occupation = st.text_input("志望する業界または業種を教えてください　例ー広告業界、営業、事務（任意）")
-mbti_result = st.text_input("MBTI診断結果を教えてください　例ーISFJ、ESFP（任意）")
-strengths_and_abilities = st.text_input("強みと能力を教えてください（必須）")
-achievements = st.text_input("成果を教えてください（必須）")
-experiences = st.text_input("エピソードを教えてください（必須）")
+st.markdown("""
+<style>
+body {
+font-family: 'Arial', sans-serif;
+background-color: #b0c4de;
+color: #333;
+}
+.stRadio > label {
+display: inline-block;
+background-color: #FFFFFF;
+color: #333;
+border-radius: 10px;
+}
+.stTextArea > div > div > textarea {
+background-color: #FFFFFF;
+border-color: #CCCCCC;
+}
 
-if st.button('自己PRを生成'):
-    # テキスト生成
-    pr_template = """以下はESに書く自己PRを作成してもらう為の情報です。{industry}と{mbti}タイプの性格特性の業界や業種と性格特性は自己PRには書かず、精度の高い自己PRを作るのに活用してください。私の強みは{strengths}です。これまでに{achievements}の成果を達成し、{experiences}という経験もあります。これらの経験から、私は{industry}での新しいチャレンジにどのように貢献できるかを見出しています。私のスキルと経験が貴社の要求にどのようにマッチするかを詳しく説明した自己PRを作成して。"""
+</style>
+""", unsafe_allow_html=True)
 
-    question_text = pr_template.format(
-        industry=industry_or_occupation,
-        mbti=mbti_result,
-        strengths=strengths_and_abilities,
-        achievements=achievements,
-        experiences=experiences
-    )
+industry = st.text_input("業界と業種を入力してください（片方だけでも可）", "", placeholder="広告業界・人材業界｜営業職・事務職")
 
-    response = model.generate_content(question_text)
-    st.write("生成された自己PR:", response.text)
+
+content_type = st.radio(
+"添削内容選択",
+options=['自己PR', '志望動機', 'ガクチカ', '長所短所'],
+horizontal=True
+)
+
+content = st.text_area("こちらに内容を入力してください", height=300)
+
+
+if st.button('添削する'):
+ if content:
+   question_text = f"{industry}の{content_type}として、以下の内容を添削してください。\n\n点数100点満点中採点をして、改善案を３つ提示してその改善案を反映した{content_type}を教えてください。\n\n{content}。"
+   response = model.generate_content(question_text)
+   improved_text = response.text
+   char_count = len(improved_text)
+   st.write("添削結果:", improved_text)
+   st.write("文字数:", char_count)
+st.error('内容を入力してください。')
